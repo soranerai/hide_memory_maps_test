@@ -17,7 +17,7 @@ bool memhide_test_enabled(void)
 EXPORT_SYMBOL_GPL(memhide_test_enabled);
 
 #ifdef CONFIG_MEMHIDE_TEST_AUDIT
-#define MEMHIDE_TEST_HIDDEN_UID 12345U
+#define MEMHIDE_TEST_APP_UID_THRESHOLD 10000U
 
 enum memhide_test_vma_kind {
 	MEMHIDE_TEST_VMA_ANON_PRIVATE,
@@ -61,7 +61,7 @@ bool memhide_test_should_hide_maps_vma(const struct vm_area_struct *vma)
 {
 	enum memhide_test_vma_kind kind = memhide_test_vma_kind(vma);
 
-	return __kuid_val(current_uid()) == MEMHIDE_TEST_HIDDEN_UID &&
+	return __kuid_val(current_uid()) > MEMHIDE_TEST_APP_UID_THRESHOLD &&
 	       (kind == MEMHIDE_TEST_VMA_ANON_PRIVATE ||
 		kind == MEMHIDE_TEST_VMA_ANON_SHARED);
 }

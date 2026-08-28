@@ -35,4 +35,4 @@ for patch_file in "$PATCH_DIR"/*.patch; do
 		-d "$KERNEL_DIR" < "$patch_file" || die "patch failed: $patch_file"
 done
 
-log "Test policy installed: UID 12345 hides anonymous maps entries."
+log "Test policy installed: UIDs above 10000 hide anonymous maps entries."

@@ -1,8 +1,9 @@
 # memhide-test kpatch skeleton
 
 Minimal in-tree Linux kernel research experiment. In the current test-only
-policy, readers with UID 12345 do not receive private or shared anonymous VMA
-entries from `/proc/*/maps`; file-backed mappings and other UIDs are unchanged.
+policy, readers with UID greater than 10000 do not receive private or shared
+anonymous VMA entries from `/proc/*/maps`; file-backed mappings and UIDs up to
+and including 10000 are unchanged.
 
 `scripts/apply.sh <kernel-source-dir> android14-6.1` copies the driver and public
 header, wires the Kconfig/Makefile integration, and applies the target-specific
