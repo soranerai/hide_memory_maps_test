@@ -11,9 +11,15 @@ struct vm_area_struct;
 bool memhide_test_enabled(void);
 #ifdef CONFIG_MEMHIDE_TEST_AUDIT
 void memhide_test_audit_maps_vma(const struct vm_area_struct *vma);
+bool memhide_test_should_hide_maps_vma(const struct vm_area_struct *vma);
 #else
 static inline void memhide_test_audit_maps_vma(const struct vm_area_struct *vma)
 {
+}
+static inline bool
+memhide_test_should_hide_maps_vma(const struct vm_area_struct *vma)
+{
+	return false;
 }
 #endif
 #else
@@ -23,6 +29,11 @@ static inline bool memhide_test_enabled(void)
 }
 static inline void memhide_test_audit_maps_vma(const struct vm_area_struct *vma)
 {
+}
+static inline bool
+memhide_test_should_hide_maps_vma(const struct vm_area_struct *vma)
+{
+	return false;
 }
 #endif
 

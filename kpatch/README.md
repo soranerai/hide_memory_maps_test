@@ -1,12 +1,12 @@
 # memhide-test kpatch skeleton
 
-Minimal starting point for an in-tree Linux kernel research module. It contains
-only Kconfig/Makefile wiring, a public no-op API, and a module initialisation
-stub. It does not alter memory maps or install hooks.
+Minimal in-tree Linux kernel research experiment. In the current test-only
+policy, readers with UID 12345 do not receive shared-anonymous VMA entries from
+`/proc/*/maps`; other mappings and UIDs are unchanged.
 
-`scripts/apply.sh <kernel-source-dir>` copies the driver and public header into
-a kernel tree. It intentionally leaves integration into `security/Kconfig` and
-`security/Makefile` as an explicit manual step, and applies no call-site patches.
+`scripts/apply.sh <kernel-source-dir> android14-6.1` copies the driver and public
+header, wires the Kconfig/Makefile integration, and applies the target-specific
+`show_map()` call-site patch.
 
 Keep target-specific experimental patches under `versions/<target>/` and test
 each target independently.

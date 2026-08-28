@@ -6,6 +6,7 @@
 #define MAP_SHARED 0x01
 #define MAP_PRIVATE 0x02
 #define MAP_ANONYMOUS 0x20
+#define MEMHIDE_TEST_UID 12345
 
 static long syscall6(long number, long a0, long a1, long a2, long a3,
 		     long a4, long a5)
@@ -30,15 +31,73 @@ static long write_all(int fd, const char *buf, long len)
 	return syscall6(64, fd, (long)buf, len, 0, 0, 0);
 }
 
-void _start(void)
+static int hex_value(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return -1;
+}
+
+static int maps_contains(const char *buf, long len, unsigned long address)
+{
+	long i = 0;
+
+	while (i < len) {
+		unsigned long start = 0, end = 0;
+		int digit, have_start = 0, have_end = 0;
+
+		while (i < len && (digit = hex_value(buf[i])) >= 0) {
+			start = (start << 4) | (unsigned long)digit;
+			have_start = 1;
+			i++;
+		}
+		if (have_start && i < len && buf[i] == '-') {
+			i++;
+			while (i < len && (digit = hex_value(buf[i])) >= 0) {
+				end = (end << 4) | (unsigned long)digit;
+				have_end = 1;
+				i++;
+			}
+			if (have_end && address >= start && address < end)
+				return 1;
+		}
+		while (i < len && buf[i++] != '\n')
+			;
+	}
+	return 0;
+}
+
+static long read_maps(char *buffer, long capacity)
 {
 	static const char maps_path[] = "/proc/self/maps";
-	static const char pass[] = "MAPS_AUDIT_GUEST=PASS\n";
-	static const char fail_message[] = "MAPS_AUDIT_GUEST=FAIL\n";
-	char buffer[1024];
+	long fd, bytes, total = 0;
+
+	fd = syscall6(56, AT_FDCWD, (long)maps_path, 0, 0, 0, 0);
+	if (fd < 0)
+		return fd;
+	while (total < capacity) {
+		bytes = syscall6(63, fd, (long)(buffer + total),
+				 capacity - total, 0, 0, 0);
+		if (bytes <= 0)
+			break;
+		total += bytes;
+	}
+	syscall6(57, fd, 0, 0, 0, 0, 0);
+	return bytes < 0 ? bytes : total;
+}
+
+void _start(void)
+{
+	static const char pass[] = "MAPS_HIDE_GUEST=PASS uid=12345\n";
+	static const char fail_root[] = "MAPS_HIDE_GUEST=FAIL root-control\n";
+	static const char fail_setuid[] = "MAPS_HIDE_GUEST=FAIL setuid\n";
+	static const char fail_policy[] = "MAPS_HIDE_GUEST=FAIL uid-policy\n";
+	static char buffer[8192];
 	volatile char *anon_private;
 	volatile char *anon_shared;
-	long fd, bytes;
+	long bytes;
 
 	anon_private = (void *)syscall6(222, 0, 4096, PROT_READ | PROT_WRITE,
 					 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -49,19 +108,30 @@ void _start(void)
 	*anon_private = 1;
 	*anon_shared = 1;
 
-	fd = syscall6(56, AT_FDCWD, (long)maps_path, 0, 0, 0, 0);
-	if (fd < 0)
+	bytes = read_maps(buffer, sizeof(buffer));
+	if (bytes < 0 ||
+	    !maps_contains(buffer, bytes, (unsigned long)anon_private) ||
+	    !maps_contains(buffer, bytes, (unsigned long)anon_shared)) {
+		write_all(1, fail_root, sizeof(fail_root) - 1);
 		goto fail;
-	do {
-		bytes = syscall6(63, fd, (long)buffer, sizeof(buffer), 0, 0, 0);
-	} while (bytes > 0);
-	syscall6(57, fd, 0, 0, 0, 0, 0);
-	if (bytes < 0)
+	}
+
+	if (syscall6(146, MEMHIDE_TEST_UID, 0, 0, 0, 0, 0) < 0) {
+		write_all(1, fail_setuid, sizeof(fail_setuid) - 1);
 		goto fail;
+	}
+
+	bytes = read_maps(buffer, sizeof(buffer));
+	if (bytes < 0 ||
+	    !maps_contains(buffer, bytes, (unsigned long)anon_private) ||
+	    maps_contains(buffer, bytes, (unsigned long)anon_shared)) {
+		write_all(1, fail_policy, sizeof(fail_policy) - 1);
+		goto fail;
+	}
+
 	write_all(1, pass, sizeof(pass) - 1);
 	syscall6(93, 0, 0, 0, 0, 0, 0);
 
 fail:
-	write_all(1, fail_message, sizeof(fail_message) - 1);
 	syscall6(93, 1, 0, 0, 0, 0, 0);
 }

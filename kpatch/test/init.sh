@@ -14,16 +14,23 @@ fi
 echo 0 > /sys/kernel/tracing/tracing_on
 echo > "$TRACE"
 echo 1 > /sys/kernel/tracing/tracing_on
-/maps_audit_guest
+if ! /maps_audit_guest; then
+	echo 'MAPS_HIDE=FAIL guest-policy-check'
+	poweroff -f
+fi
 echo 0 > /sys/kernel/tracing/tracing_on
 
-if ! grep -q 'memhide_test_maps.*kind=0' "$TRACE"; then
-	echo 'MAPS_AUDIT=FAIL missing-anon-private'
+if ! grep -q 'memhide_test_maps.*uid=0 .*kind=1.*hide=0' "$TRACE"; then
+	echo 'MAPS_HIDE=FAIL missing-root-control'
 	poweroff -f
 fi
-if ! grep -q 'memhide_test_maps.*kind=1' "$TRACE"; then
-	echo 'MAPS_AUDIT=FAIL missing-anon-shared'
+if ! grep -q 'memhide_test_maps.*uid=12345 .*kind=0.*hide=0' "$TRACE"; then
+	echo 'MAPS_HIDE=FAIL missing-private-control'
 	poweroff -f
 fi
-echo 'MAPS_AUDIT=PASS maps-output-unmodified'
+if ! grep -q 'memhide_test_maps.*uid=12345 .*kind=1.*hide=1' "$TRACE"; then
+	echo 'MAPS_HIDE=FAIL missing-hide-decision'
+	poweroff -f
+fi
+echo 'MAPS_HIDE=PASS uid=12345 shared-anon-hidden'
 poweroff -f

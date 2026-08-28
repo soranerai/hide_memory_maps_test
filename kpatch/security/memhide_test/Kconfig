@@ -3,9 +3,9 @@ config MEMHIDE_TEST
 	depends on SECURITY
 	default n
 	help
-	  Builds the minimal memhide-test in-tree research scaffold.
-	  The initial implementation is inert: it installs no hooks and changes
-	  no process memory-map output.
+	  Builds the minimal memhide-test in-tree research experiment. Filtering
+	  is enabled only together with MEMHIDE_TEST_AUDIT and its hard-coded
+	  QEMU test policy.
 
 	  If unsure, say N.
 
@@ -14,6 +14,6 @@ config MEMHIDE_TEST_AUDIT
 	depends on MEMHIDE_TEST && TRACING
 	default n
 	help
-	  Emits a trace event for each VMA printed while a task reads its own
-	  /proc/self/maps. This option is intended only for QEMU experiments.
-	  It never filters, rewrites, or suppresses procfs output.
+	  Emits a trace event for each VMA considered while a task reads its own
+	  /proc/self/maps. For the QEMU experiment, UID 12345 also suppresses
+	  shared-anonymous VMAs. This hard-coded policy is test-only.

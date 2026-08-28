@@ -1,13 +1,13 @@
-# Android 14 / Linux 6.1 maps audit plan
+# Android 14 / Linux 6.1 maps filtering experiment
 
 ## Scope and boundary
 
-This is an audit-only QEMU experiment. It must not alter `/proc/<pid>/maps`,
-`/proc/<pid>/smaps`, access control, VMA flags, or process memory. It must not
-contain product-specific identifiers or PID thresholds.
+This QEMU experiment adds one deliberately narrow hard-coded policy: a reader
+with UID 12345 does not receive shared-anonymous VMA entries from
+`/proc/<pid>/maps`. It does not alter VMA flags or process memory.
 
-Target: a pinned `android14-6.1` Android common commit, recorded in the test
-result. The exact target commit must be checked before any patch is written.
+Target: the prepared `android14-6.1` kernel tree in the matching `ddk-qemu`
+image. The tree commit is recorded with the test artifacts.
 
 ## Confirmed observation path
 
@@ -18,10 +18,9 @@ In Android common 6.1, maps output is produced in `fs/proc/task_mmu.c`:
 3. The seq `show` callback is `show_map()`.
 4. `show_map()` calls `show_map_vma()` once for each VMA.
 
-The audit point is immediately before `show_map_vma()`. At that point the VMA
-being emitted is known, and the output has not yet been changed. The patch must
-only call a static audit helper and then unconditionally preserve the existing
-`show_map_vma()` call.
+The policy point is immediately before `show_map_vma()`. At that point the VMA
+being emitted is known. The test helper records an audit decision and may skip
+the output call only for UID 12345 and a shared-anonymous VMA.
 
 ## Event contract
 
@@ -85,12 +84,12 @@ commit, config fragment checksum, and a PASS/FAIL summary.
 - Android 6.1 Image boots in QEMU with `CONFIG_MEMHIDE_TEST_AUDIT=y`.
 - All five map classes produce the expected audit classification.
 - The feature-off build emits no events.
-- The guest's maps output is unchanged in both feature states.
+- Root sees both control VMAs; UID 12345 loses only the shared-anonymous VMA.
 - No warning, lockdep report, KASAN report, or kernel panic occurs.
 
 ## Explicit non-goals
 
-- Filtering, suppressing, rewriting, or reordering `/proc` output.
+- General-purpose or configurable filtering policy.
 - Target selection by arbitrary PID ranges.
 - Product/runtime identification or integration.
 - Coverage of `smaps`, `numa_maps`, `pagemap`, or external-process reads in
