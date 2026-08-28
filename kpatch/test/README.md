@@ -1,7 +1,7 @@
 # QEMU test
 
-`ci-qemu.sh` builds Android common 6.1 and boots it in QEMU. The guest verifies
-that root sees private and shared-anonymous test VMAs, then switches to the
-representative application UID 12345 (greater than 10000) and verifies that
-both anonymous VMAs are suppressed while the file-backed executable remains
-visible. Trace events verify all decisions.
+`ci-qemu.sh` builds Android common 6.1 and boots it in QEMU. The guests verify
+that root sees touched and untouched private-anonymous VMAs plus a
+shared-anonymous VMA. UID 10000 must retain all three mappings, while UID 10001
+must lose all three and retain the file-backed executable mapping. Trace events
+verify the boundary and include the untouched `anon_vma=0` case.

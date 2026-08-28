@@ -42,6 +42,10 @@ make ARCH=arm64 LLVM=1 -j"$MEMHIDE_BUILD_JOBS" Image
 "$CLANG_BIN/clang" --target=aarch64-linux-gnu -ffreestanding -nostdlib -static -fuse-ld=lld \
   -fno-stack-protector -Wl,-e,_start /repo/kpatch/test/maps_audit_guest.c \
   -o /out/maps_audit_guest
+"$CLANG_BIN/clang" --target=aarch64-linux-gnu -ffreestanding -nostdlib -static -fuse-ld=lld \
+  -fno-stack-protector -Wl,-e,_start -DMEMHIDE_TEST_UID=10000 \
+  -DMEMHIDE_EXPECT_HIDDEN=0 /repo/kpatch/test/maps_audit_guest.c \
+  -o /out/maps_audit_boundary
 cp arch/arm64/boot/Image /out/Image
 printf "%s\\n" "$(git rev-parse HEAD)" > /out/kernel.commit
 '

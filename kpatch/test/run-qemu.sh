@@ -8,6 +8,7 @@ RUNTIME="${MEMHIDE_CONTAINER_RUNTIME:-podman}"
 QEMU_IMAGE="${MEMHIDE_QEMU_IMAGE:-}"
 IMAGE="$CACHE/Image"
 GUEST="$CACHE/maps_audit_guest"
+BOUNDARY_GUEST="$CACHE/maps_audit_boundary"
 LOG="$CACHE/serial.log"
 
 if [ -z "$QEMU_IMAGE" ]; then
@@ -17,6 +18,7 @@ else
 fi
 [ -f "$IMAGE" ] || { echo "Run $HERE/build-kernel.sh first"; exit 2; }
 [ -f "$GUEST" ] || { echo "Guest test binary missing"; exit 2; }
+[ -f "$BOUNDARY_GUEST" ] || { echo "Boundary guest test binary missing"; exit 2; }
 mkdir -p "$CACHE"
 
 WORK="$(mktemp -d)"
@@ -24,8 +26,9 @@ trap 'rm -rf "$WORK"' EXIT
 ROOT="$WORK/root"
 mkdir -p "$ROOT"/{proc,sys,dev}
 cp "$GUEST" "$ROOT/maps_audit_guest"
+cp "$BOUNDARY_GUEST" "$ROOT/maps_audit_boundary"
 cp "$HERE/init.sh" "$ROOT/init"
-chmod 0755 "$ROOT/init" "$ROOT/maps_audit_guest"
+chmod 0755 "$ROOT/init" "$ROOT/maps_audit_guest" "$ROOT/maps_audit_boundary"
 cp "$IMAGE" "$WORK/Image"
 
 if [ -n "$QEMU_IMAGE" ]; then
@@ -65,7 +68,7 @@ else
 		-nographic -no-reboot \
 		2>&1 | tee "$LOG" || true
 fi
-grep -q 'MAPS_HIDE=PASS uid=12345 anonymous-hidden' "$LOG" || {
+grep -q 'MAPS_HIDE=PASS uid-threshold anonymous-hidden' "$LOG" || {
 	echo "QEMU validation failed; serial log retained at: $LOG" >&2
 	exit 1
 }

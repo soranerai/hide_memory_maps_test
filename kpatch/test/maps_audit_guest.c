@@ -6,7 +6,12 @@
 #define MAP_SHARED 0x01
 #define MAP_PRIVATE 0x02
 #define MAP_ANONYMOUS 0x20
-#define MEMHIDE_TEST_UID 12345
+#ifndef MEMHIDE_TEST_UID
+#define MEMHIDE_TEST_UID 10001
+#endif
+#ifndef MEMHIDE_EXPECT_HIDDEN
+#define MEMHIDE_EXPECT_HIDDEN 1
+#endif
 
 static long syscall6(long number, long a0, long a1, long a2, long a3,
 		     long a4, long a5)
@@ -90,27 +95,40 @@ static long read_maps(char *buffer, long capacity)
 
 void _start(void)
 {
-	static const char pass[] = "MAPS_HIDE_GUEST=PASS uid=12345 anonymous-hidden\n";
+#if MEMHIDE_EXPECT_HIDDEN
+	static const char pass[] = "MAPS_HIDE_GUEST=PASS uid=10001 anonymous-hidden\n";
+#else
+	static const char pass[] = "MAPS_HIDE_GUEST=PASS uid=10000 boundary-visible\n";
+#endif
 	static const char fail_root[] = "MAPS_HIDE_GUEST=FAIL root-control\n";
 	static const char fail_setuid[] = "MAPS_HIDE_GUEST=FAIL setuid\n";
 	static const char fail_policy[] = "MAPS_HIDE_GUEST=FAIL uid-policy\n";
 	static char buffer[8192];
-	volatile char *anon_private;
+	volatile char *anon_private_touched;
+	volatile char *anon_private_untouched;
 	volatile char *anon_shared;
 	long bytes;
 
-	anon_private = (void *)syscall6(222, 0, 4096, PROT_READ | PROT_WRITE,
-					 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	anon_private_touched = (void *)syscall6(222, 0, 4096,
+						 PROT_READ | PROT_WRITE,
+						 MAP_PRIVATE | MAP_ANONYMOUS,
+						 -1, 0);
+	anon_private_untouched = (void *)syscall6(222, 0, 4096,
+						   PROT_READ,
+						   MAP_PRIVATE | MAP_ANONYMOUS,
+						   -1, 0);
 	anon_shared = (void *)syscall6(222, 0, 4096, PROT_READ | PROT_WRITE,
 					MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-	if ((long)anon_private < 0 || (long)anon_shared < 0)
+	if ((long)anon_private_touched < 0 ||
+	    (long)anon_private_untouched < 0 || (long)anon_shared < 0)
 		goto fail;
-	*anon_private = 1;
+	*anon_private_touched = 1;
 	*anon_shared = 1;
 
 	bytes = read_maps(buffer, sizeof(buffer));
 	if (bytes < 0 ||
-	    !maps_contains(buffer, bytes, (unsigned long)anon_private) ||
+	    !maps_contains(buffer, bytes, (unsigned long)anon_private_touched) ||
+	    !maps_contains(buffer, bytes, (unsigned long)anon_private_untouched) ||
 	    !maps_contains(buffer, bytes, (unsigned long)anon_shared)) {
 		write_all(1, fail_root, sizeof(fail_root) - 1);
 		goto fail;
@@ -122,13 +140,29 @@ void _start(void)
 	}
 
 	bytes = read_maps(buffer, sizeof(buffer));
-	if (bytes < 0 ||
-	    maps_contains(buffer, bytes, (unsigned long)anon_private) ||
-	    maps_contains(buffer, bytes, (unsigned long)anon_shared) ||
-	    !maps_contains(buffer, bytes, (unsigned long)_start)) {
+	if (bytes < 0 || !maps_contains(buffer, bytes, (unsigned long)_start)) {
 		write_all(1, fail_policy, sizeof(fail_policy) - 1);
 		goto fail;
 	}
+#if MEMHIDE_EXPECT_HIDDEN
+	if (maps_contains(buffer, bytes,
+			  (unsigned long)anon_private_touched) ||
+	    maps_contains(buffer, bytes,
+			  (unsigned long)anon_private_untouched) ||
+	    maps_contains(buffer, bytes, (unsigned long)anon_shared)) {
+		write_all(1, fail_policy, sizeof(fail_policy) - 1);
+		goto fail;
+	}
+#else
+	if (!maps_contains(buffer, bytes,
+			   (unsigned long)anon_private_touched) ||
+	    !maps_contains(buffer, bytes,
+			   (unsigned long)anon_private_untouched) ||
+	    !maps_contains(buffer, bytes, (unsigned long)anon_shared)) {
+		write_all(1, fail_policy, sizeof(fail_policy) - 1);
+		goto fail;
+	}
+#endif
 
 	write_all(1, pass, sizeof(pass) - 1);
 	syscall6(93, 0, 0, 0, 0, 0, 0);

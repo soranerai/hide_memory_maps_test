@@ -60,20 +60,20 @@ be applied to a different Android common branch by filename inference.
 
 ## QEMU matrix
 
-The guest test program creates and reads these mappings from its own
+The guest test programs create and read these mappings from their own
 `/proc/self/maps`:
 
-1. private anonymous RW mapping;
-2. shared anonymous RW mapping;
-3. private file-backed mapping;
-4. memfd-backed mapping, when available;
-5. ordinary heap and stack baseline.
+1. touched private anonymous RW mapping;
+2. untouched private anonymous read-only mapping with no `anon_vma`
+   association;
+3. shared anonymous RW mapping;
+4. the file-backed executable mapping as a negative control.
 
-For every case the test records the expected mapping interval, collects the
-trace events, and verifies exactly one matching audit event with the expected
-classification. It also snapshots `maps` before and after tracing and requires
-byte-for-byte identical output except for normal address randomisation between
-separate process launches.
+Root must see every mapping. A guest switched to UID 10000 must retain every
+mapping, while a separate guest switched to UID 10001 must lose all three
+anonymous mappings and retain the executable mapping. The trace assertions
+also require the untouched private mapping to be classified as anonymous with
+`anon_vma=0` on both sides of the UID boundary.
 
 Run the guest with `panic_on_warn=1`, KASAN/KCSAN when the selected build
 supports them, and a fixed serial timeout. The runner reports the pinned kernel
@@ -82,10 +82,9 @@ commit, config fragment checksum, and a PASS/FAIL summary.
 ## Exit criteria for this phase
 
 - Android 6.1 Image boots in QEMU with `CONFIG_MEMHIDE_TEST_AUDIT=y`.
-- All five map classes produce the expected audit classification.
-- The feature-off build emits no events.
-- Root sees both anonymous VMAs; representative application UID 12345 loses
-  both while retaining a file-backed control mapping.
+- All four test mappings produce the expected audit classification.
+- Root and UID 10000 retain all anonymous VMAs; UID 10001 loses them while
+  retaining a file-backed control mapping.
 - No warning, lockdep report, KASAN report, or kernel panic occurs.
 
 ## Explicit non-goals
