@@ -1,0 +1,48 @@
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 37f6cefe0..cb447830d 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -6,6 +6,7 @@
+ #include <linux/mount.h>
+ #include <linux/seq_file.h>
+ #include <linux/highmem.h>
++#include <linux/memhide_test.h>
+ #include <linux/ptrace.h>
+ #include <linux/slab.h>
+ #include <linux/pagemap.h>
+@@ -352,8 +353,10 @@ static int show_map(struct seq_file *m, void *v)
+ {
+ 	struct vm_area_struct *vma = v;
+
+-	if (vma_pages(vma))
++	if (vma_pages(vma)) {
++		memhide_test_audit_maps_vma(vma);
+ 		show_map_vma(m, vma);
++	}
+
+ 	show_map_pad_vma(vma, m, show_map_vma, false);
+
+diff --git a/security/Kconfig b/security/Kconfig
+index 8cd544714..4f20a983c 100644
+--- a/security/Kconfig
++++ b/security/Kconfig
+@@ -292,5 +292,6 @@ config LSM
+
+ source "security/Kconfig.hardening"
+
+-endmenu
++source "security/memhide_test/Kconfig"
+
++endmenu
+diff --git a/security/Makefile b/security/Makefile
+index 18121f8f8..373618ff7 100644
+--- a/security/Makefile
++++ b/security/Makefile
+@@ -24,6 +24,7 @@ obj-$(CONFIG_SECURITY_LOCKDOWN_LSM)	+= lockdown/
+ obj-$(CONFIG_CGROUPS)			+= device_cgroup.o
+ obj-$(CONFIG_BPF_LSM)			+= bpf/
+ obj-$(CONFIG_SECURITY_LANDLOCK)		+= landlock/
++obj-$(CONFIG_MEMHIDE_TEST)		+= memhide_test/
+
+ # Object integrity file lists
+ obj-$(CONFIG_INTEGRITY)			+= integrity/

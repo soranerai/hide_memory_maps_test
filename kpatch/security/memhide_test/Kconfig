@@ -1,0 +1,19 @@
+config MEMHIDE_TEST
+	bool "Memory-map research test support"
+	depends on SECURITY
+	default n
+	help
+	  Builds the minimal memhide-test in-tree research scaffold.
+	  The initial implementation is inert: it installs no hooks and changes
+	  no process memory-map output.
+
+	  If unsure, say N.
+
+config MEMHIDE_TEST_AUDIT
+	bool "Trace /proc/self/maps VMA emission (test only)"
+	depends on MEMHIDE_TEST && TRACING
+	default n
+	help
+	  Emits a trace event for each VMA printed while a task reads its own
+	  /proc/self/maps. This option is intended only for QEMU experiments.
+	  It never filters, rewrites, or suppresses procfs output.
