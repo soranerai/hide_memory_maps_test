@@ -90,7 +90,7 @@ static long read_maps(char *buffer, long capacity)
 
 void _start(void)
 {
-	static const char pass[] = "MAPS_HIDE_GUEST=PASS uid=12345\n";
+	static const char pass[] = "MAPS_HIDE_GUEST=PASS uid=12345 anonymous-hidden\n";
 	static const char fail_root[] = "MAPS_HIDE_GUEST=FAIL root-control\n";
 	static const char fail_setuid[] = "MAPS_HIDE_GUEST=FAIL setuid\n";
 	static const char fail_policy[] = "MAPS_HIDE_GUEST=FAIL uid-policy\n";
@@ -123,8 +123,9 @@ void _start(void)
 
 	bytes = read_maps(buffer, sizeof(buffer));
 	if (bytes < 0 ||
-	    !maps_contains(buffer, bytes, (unsigned long)anon_private) ||
-	    maps_contains(buffer, bytes, (unsigned long)anon_shared)) {
+	    maps_contains(buffer, bytes, (unsigned long)anon_private) ||
+	    maps_contains(buffer, bytes, (unsigned long)anon_shared) ||
+	    !maps_contains(buffer, bytes, (unsigned long)_start)) {
 		write_all(1, fail_policy, sizeof(fail_policy) - 1);
 		goto fail;
 	}

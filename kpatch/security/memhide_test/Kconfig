@@ -16,4 +16,4 @@ config MEMHIDE_TEST_AUDIT
 	help
 	  Emits a trace event for each VMA considered while a task reads its own
 	  /proc/self/maps. For the QEMU experiment, UID 12345 also suppresses
-	  shared-anonymous VMAs. This hard-coded policy is test-only.
+	  private and shared anonymous VMAs. This hard-coded policy is test-only.

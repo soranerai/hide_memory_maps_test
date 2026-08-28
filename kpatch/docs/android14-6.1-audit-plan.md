@@ -3,7 +3,7 @@
 ## Scope and boundary
 
 This QEMU experiment adds one deliberately narrow hard-coded policy: a reader
-with UID 12345 does not receive shared-anonymous VMA entries from
+with UID 12345 does not receive private or shared anonymous VMA entries from
 `/proc/<pid>/maps`. It does not alter VMA flags or process memory.
 
 Target: the prepared `android14-6.1` kernel tree in the matching `ddk-qemu`
@@ -20,7 +20,7 @@ In Android common 6.1, maps output is produced in `fs/proc/task_mmu.c`:
 
 The policy point is immediately before `show_map_vma()`. At that point the VMA
 being emitted is known. The test helper records an audit decision and may skip
-the output call only for UID 12345 and a shared-anonymous VMA.
+the output call only for UID 12345 and an anonymous VMA.
 
 ## Event contract
 
@@ -84,7 +84,8 @@ commit, config fragment checksum, and a PASS/FAIL summary.
 - Android 6.1 Image boots in QEMU with `CONFIG_MEMHIDE_TEST_AUDIT=y`.
 - All five map classes produce the expected audit classification.
 - The feature-off build emits no events.
-- Root sees both control VMAs; UID 12345 loses only the shared-anonymous VMA.
+- Root sees both anonymous VMAs; UID 12345 loses both while retaining a
+  file-backed control mapping.
 - No warning, lockdep report, KASAN report, or kernel panic occurs.
 
 ## Explicit non-goals

@@ -59,8 +59,11 @@ EXPORT_SYMBOL_GPL(memhide_test_audit_maps_vma);
 
 bool memhide_test_should_hide_maps_vma(const struct vm_area_struct *vma)
 {
+	enum memhide_test_vma_kind kind = memhide_test_vma_kind(vma);
+
 	return __kuid_val(current_uid()) == MEMHIDE_TEST_HIDDEN_UID &&
-	       memhide_test_vma_kind(vma) == MEMHIDE_TEST_VMA_ANON_SHARED;
+	       (kind == MEMHIDE_TEST_VMA_ANON_PRIVATE ||
+		kind == MEMHIDE_TEST_VMA_ANON_SHARED);
 }
 EXPORT_SYMBOL_GPL(memhide_test_should_hide_maps_vma);
 #endif

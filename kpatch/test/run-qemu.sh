@@ -65,7 +65,7 @@ else
 		-nographic -no-reboot \
 		2>&1 | tee "$LOG" || true
 fi
-grep -q 'MAPS_HIDE=PASS uid=12345 shared-anon-hidden' "$LOG" || {
+grep -q 'MAPS_HIDE=PASS uid=12345 anonymous-hidden' "$LOG" || {
 	echo "QEMU validation failed; serial log retained at: $LOG" >&2
 	exit 1
 }

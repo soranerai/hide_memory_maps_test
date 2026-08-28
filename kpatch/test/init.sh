@@ -24,13 +24,17 @@ if ! grep -q 'memhide_test_maps.*uid=0 .*kind=1.*hide=0' "$TRACE"; then
 	echo 'MAPS_HIDE=FAIL missing-root-control'
 	poweroff -f
 fi
-if ! grep -q 'memhide_test_maps.*uid=12345 .*kind=0.*hide=0' "$TRACE"; then
-	echo 'MAPS_HIDE=FAIL missing-private-control'
+if ! grep -q 'memhide_test_maps.*uid=12345 .*kind=0.*hide=1' "$TRACE"; then
+	echo 'MAPS_HIDE=FAIL missing-private-hide-decision'
 	poweroff -f
 fi
 if ! grep -q 'memhide_test_maps.*uid=12345 .*kind=1.*hide=1' "$TRACE"; then
-	echo 'MAPS_HIDE=FAIL missing-hide-decision'
+	echo 'MAPS_HIDE=FAIL missing-shared-hide-decision'
 	poweroff -f
 fi
-echo 'MAPS_HIDE=PASS uid=12345 shared-anon-hidden'
+if ! grep -q 'memhide_test_maps.*uid=12345 .*kind=2.*hide=0' "$TRACE"; then
+	echo 'MAPS_HIDE=FAIL missing-file-control'
+	poweroff -f
+fi
+echo 'MAPS_HIDE=PASS uid=12345 anonymous-hidden'
 poweroff -f
