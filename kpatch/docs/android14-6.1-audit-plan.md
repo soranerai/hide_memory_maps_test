@@ -48,12 +48,12 @@ Add a test-only `CONFIG_MEMHIDE_TEST_AUDIT` option below `CONFIG_MEMHIDE_TEST`.
 It depends on `TRACEPOINTS` and defaults to `n`. The production-neutral module
 remains inert when the option is off.
 
-The target-tree patch has two deliberate parts:
+Integration has two deliberate parts:
 
-1. Wire `security/memhide_test` into `security/Kconfig` and
-   `security/Makefile`.
-2. Add the audit callback at the `show_map()` observation point in
-   `fs/proc/task_mmu.c`.
+1. `scripts/apply.sh` wires `security/memhide_test` into `security/Kconfig`
+   and `security/Makefile` without relying on vendor-sensitive patch context.
+2. The version-pinned patch adds the audit callback at the `show_map()`
+   observation point in `fs/proc/task_mmu.c`.
 
 The patch must be version-pinned under `versions/android14-6.1/`; it must not
 be applied to a different Android common branch by filename inference.

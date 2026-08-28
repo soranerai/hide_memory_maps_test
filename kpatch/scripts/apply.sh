@@ -20,6 +20,8 @@ log() { echo "[memhide-test] $*"; }
 [ -f "$HEADER" ] || die "public header not found: $HEADER"
 [ "$TARGET" = "android14-6.1" ] || die "unsupported target: $TARGET"
 [ -d "$PATCH_DIR" ] || die "patch directory not found: $PATCH_DIR"
+[ -f "$KERNEL_DIR/security/Kconfig" ] || die "security/Kconfig not found"
+[ -f "$KERNEL_DIR/security/Makefile" ] || die "security/Makefile not found"
 
 log "Copying security/memhide_test..."
 rm -rf "$KERNEL_DIR/security/memhide_test"
@@ -28,11 +30,31 @@ cp -a "$DRIVER_DIR" "$KERNEL_DIR/security/memhide_test"
 log "Copying include/linux/memhide_test.h..."
 cp -a "$HEADER" "$KERNEL_DIR/include/linux/memhide_test.h"
 
+# These integration points are intentionally handled outside the versioned
+# task_mmu patch. Vendor GKI trees commonly add security options and objects,
+# which makes context-based Kconfig/Makefile hunks unnecessarily fragile.
+KCONFIG_SOURCE='source "security/memhide_test/Kconfig"'
+MAKEFILE_OBJECT='obj-$(CONFIG_MEMHIDE_TEST) += memhide_test/'
+
+if ! grep -Fqx "$KCONFIG_SOURCE" "$KERNEL_DIR/security/Kconfig"; then
+	log "Wiring security/memhide_test/Kconfig..."
+	printf '\n%s\n' "$KCONFIG_SOURCE" >> "$KERNEL_DIR/security/Kconfig"
+fi
+if ! grep -Fqx "$MAKEFILE_OBJECT" "$KERNEL_DIR/security/Makefile"; then
+	log "Wiring security/memhide_test/Makefile..."
+	printf '\n%s\n' "$MAKEFILE_OBJECT" >> "$KERNEL_DIR/security/Makefile"
+fi
+
 for patch_file in "$PATCH_DIR"/*.patch; do
 	[ -f "$patch_file" ] || die "no patches found in $PATCH_DIR"
 	log "Applying $(basename "$patch_file")..."
 	patch --forward --batch --fuzz=0 --no-backup-if-mismatch -p1 \
 		-d "$KERNEL_DIR" < "$patch_file" || die "patch failed: $patch_file"
 done
+
+grep -Fqx "$KCONFIG_SOURCE" "$KERNEL_DIR/security/Kconfig" ||
+	die "Kconfig wiring verification failed"
+grep -Fqx "$MAKEFILE_OBJECT" "$KERNEL_DIR/security/Makefile" ||
+	die "Makefile wiring verification failed"
 
 log "Test policy installed: UIDs above 10000 hide anonymous maps entries."
